@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt" // for printing output
-	"os" // for file operations and exiting with codes
-	// "strings" // for trimming spaces from file content
+	"fmt"
+	"os"
 )
 
 func main() {
@@ -15,33 +14,28 @@ func main() {
 	}
 
 	filename := os.Args[1]
-
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		fmt.Println("Error reading file: ", err)
+		fmt.Println("Error reading file:", err)
 		os.Exit(1)
 	}
-
-	// content := strings.TrimSpace(string(data))
-
-	// if content == "{}" {
-	// 	fmt.Println("Valid JSON: empty object")
-	// 	os.Exit(0)
-	// } else {
-	// 	fmt.Println("Invalid JSON")
-	// 	os.Exit(1)
-	// }
 
 	lexer := NewLexer(string(data))
 	parser := NewParser(lexer)
 
-	err = parser.ParseObject()
+	if parser.currentToken.Type == TokenLBrace {
+		err = parser.ParseObject()
+	} else if parser.currentToken.Type == TokenLBracket {
+		err = parser.ParseArray()
+	} else {
+		fmt.Println("JSON must start with an object or array")
+		os.Exit(1)
+	}
+
 	if err != nil {
-		fmt.Println("Invalid JSON, error while parsing:", err)
+		fmt.Println("Invalid JSON:", err)
 		os.Exit(1)
 	} else {
 		fmt.Println("Valid JSON")
-		os.Exit(0)
 	}
-
 }

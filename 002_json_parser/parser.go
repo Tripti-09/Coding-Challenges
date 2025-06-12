@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	// "strconv"
+	"strconv"
 )
 
 type Parser struct {
@@ -23,20 +23,17 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.lexer.NextToken()
 }
 
-// Entry point for JSON parsing (object only for now)
 func (p *Parser) ParseObject() error {
 	if p.currentToken.Type != TokenLBrace {
 		return fmt.Errorf("expected { but got %s", p.currentToken.Literal)
 	}
 	p.nextToken()
 
-	// Handle empty object
 	if p.currentToken.Type == TokenRBrace {
 		p.nextToken()
 		return nil
 	}
 
-parseLoop:
 	for {
 		if p.currentToken.Type != TokenString {
 			return fmt.Errorf("expected string key but got %s", p.currentToken.Literal)
@@ -52,17 +49,13 @@ parseLoop:
 			return err
 		}
 
-		switch p.currentToken.Type {
-		case TokenComma:
+		if p.currentToken.Type == TokenComma {
 			p.nextToken()
-			continue parseLoop
-		case TokenRBrace:
+			continue
+		} else if p.currentToken.Type == TokenRBrace {
 			p.nextToken()
-			if p.currentToken.Type != TokenEOF {
-				continue
-			}
-			break parseLoop
-		default:
+			break
+		} else {
 			return fmt.Errorf("expected , or } but got %s", p.currentToken.Literal)
 		}
 	}
@@ -70,12 +63,48 @@ parseLoop:
 	return nil
 }
 
-// Parses any JSON value
+func (p *Parser) ParseArray() error {
+	if p.currentToken.Type != TokenLBracket {
+		return fmt.Errorf("expected [ but got %s", p.currentToken.Literal)
+	}
+	p.nextToken()
+
+	if p.currentToken.Type == TokenRBracket {
+		p.nextToken()
+		return nil
+	}
+
+	for {
+		if err := p.parseValue(); err != nil {
+			return err
+		}
+
+		if p.currentToken.Type == TokenComma {
+			p.nextToken()
+			continue
+		} else if p.currentToken.Type == TokenRBracket {
+			p.nextToken()
+			break
+		} else {
+			return fmt.Errorf("expected , or ] but got %s", p.currentToken.Literal)
+		}
+	}
+
+	return nil
+}
+
 func (p *Parser) parseValue() error {
-	// fmt.Println("token:", p.currentToken.Type)
-	
 	switch p.currentToken.Type {
-	case TokenString, TokenNumber, TokenTrue, TokenFalse, TokenNull:
+	case TokenString:
+		p.nextToken()
+		return nil
+	case TokenNumber:
+		if _, err := strconv.ParseFloat(p.currentToken.Literal, 64); err != nil {
+			return fmt.Errorf("invalid number: %s", p.currentToken.Literal)
+		}
+		p.nextToken()
+		return nil
+	case TokenTrue, TokenFalse, TokenNull:
 		p.nextToken()
 		return nil
 	case TokenLBrace:
@@ -85,37 +114,4 @@ func (p *Parser) parseValue() error {
 	default:
 		return fmt.Errorf("unexpected value: %s", p.currentToken.Literal)
 	}
-}
-
-// Parses JSON arrays (e.g., [1, "two", false])
-func (p *Parser) ParseArray() error {
-	if p.currentToken.Type != TokenLBracket {
-		return fmt.Errorf("expected [ but got %s", p.currentToken.Literal)
-	}
-	p.nextToken()
-
-	// Handle empty array
-	if p.currentToken.Type == TokenRBracket {
-		p.nextToken()
-		return nil
-	}
-
-parseArray:
-	for {
-		if err := p.parseValue(); err != nil {
-			return err
-		}
-
-		switch p.currentToken.Type {
-		case TokenComma:
-			p.nextToken()
-			continue parseArray
-		case TokenRBracket:
-			p.nextToken()
-			break parseArray
-		default:
-			return fmt.Errorf("expected , or ] but got %s", p.currentToken.Literal)
-		}
-	}
-	return nil
 }
